@@ -14,57 +14,78 @@ else:
 
 st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon=logo_path if logo_path else "📈")
 
-# --- 2. THE CHAT-STYLE CSS ---
+# --- 2. ADVANCED CHAT INTERFACE CSS ---
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #ffffff; }
     
-    /* Big Header */
-    .big-title {
-        font-size: 50px !important;
-        font-weight: 800;
+    /* Center the Analysis Hub Title */
+    .hub-title {
         text-align: center;
-        margin-top: -20px;
-        color: #ffffff;
+        font-size: 40px;
+        font-weight: 700;
+        margin-bottom: 30px;
     }
 
-    /* Modern Chat Input Container */
-    .chat-container {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 70%;
-        background-color: #21262d;
-        border-radius: 25px;
-        padding: 10px 20px;
-        border: 1px solid #30363d;
+    /* THE CHAT BAR CONTAINER */
+    .chat-bar {
         display: flex;
         align-items: center;
-        z-index: 1000;
+        background-color: #21262d;
+        border: 1px solid #30363d;
+        border-radius: 30px;
+        padding: 5px 15px;
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
     }
 
-    /* Customizing the Streamlit Uploader to look like a (+) Button */
+    /* Make the File Uploader look like a circular (+) button */
     .stFileUploader section {
         padding: 0 !important;
+        min-height: unset !important;
         background-color: transparent !important;
         border: none !important;
     }
+    .stFileUploader label { display: none; }
     
-    /* Style for Analysis Results */
-    .result-card {
+    /* Circular Buttons Styling */
+    .circle-btn {
+        width: 40px;
+        height: 40px;
+        background-color: #30363d;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        color: white;
+        font-size: 20px;
+        border: none;
+    }
+
+    .send-btn {
+        background-color: #ffffff;
+        color: #000000;
+    }
+
+    /* Results Styling */
+    .result-area {
         background-color: #161b22;
-        padding: 20px;
-        border-radius: 15px;
+        padding: 25px;
+        border-radius: 20px;
         border: 1px solid #30363d;
-        margin-top: 20px;
+        margin-top: 30px;
+        max-width: 850px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. CORE LOGIC ---
+# --- 3. DATABASE FUNCTIONS ---
 def load_users():
     if not os.path.exists('users.csv'):
         pd.DataFrame(columns=['Email', 'Password', 'Username']).to_csv('users.csv', index=False)
@@ -72,7 +93,7 @@ def load_users():
 
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# --- 4. LOGIN SCREEN (SAME AS PREVIOUS) ---
+# --- 4. LOGIN SCREEN ---
 if not st.session_state.logged_in:
     st.markdown('<h1 style="font-size:90px; text-align:center;">MATRIX YIELD</h1>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.5, 1])
@@ -86,54 +107,61 @@ if not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.username = db[db['Email'] == e]['Username'].values[0]
                     st.rerun()
-                else: st.error("Invalid Login")
+                else: st.error("Invalid Credentials")
 
-# --- 5. THE NEW ANALYSIS HUB (CHAT INTERFACE) ---
+# --- 5. THE CHAT ANALYSIS HUB ---
 else:
     with st.sidebar:
         if logo_path: st.image(logo_path, use_container_width=True)
-        st.write(f"Logged in as: **{st.session_state.username}**")
         if st.button("Logout"):
             st.session_state.logged_in = False
             st.rerun()
 
-    st.markdown('<h1 class="big-title">ANALYSIS HUB</h1>', unsafe_allow_html=True)
+    st.markdown('<div class="hub-title">How can Matrix Yield help you today?</div>', unsafe_allow_html=True)
 
-    # UI for Chat & Upload
-    # We use columns to simulate the (+) [Text] [^] layout
-    display_col1, display_col2 = st.columns([2, 1])
+    # Main Chat Interface Area
+    container = st.container()
+    
+    # 1. THE BAR: (+) INPUT (UP-ARROW)
+    # Using columns to create the layout
+    c1, c2, c3 = st.columns([0.15, 0.7, 0.15])
 
-    with st.container():
-        st.write("### 👋 How can Matrix Yield help you today?")
-        
-        # 1. THE PLUS (+) BUTTON AREA
-        uploaded_file = st.file_uploader("➕ Upload Chart", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
-        
-        # 2. THE TEXT INPUT AREA
-        user_query = st.text_input("Type your message or ask about a chart...", placeholder="Analyze this chart for BOS and entry...", label_visibility="collapsed")
-        
-        # 3. THE ANALYSIS BUTTON (The "Arrow Up" Trigger)
-        if st.button("⬆️ Run Analysis"):
-            if uploaded_file:
-                img = Image.open(uploaded_file)
-                st.image(img, width=400)
+    with c1:
+        # THE PLUS (+) BUTTON (FILE UPLOADER)
+        # Clicking this opens the file explorer directly
+        uploaded_file = st.file_uploader("➕", type=['png', 'jpg', 'jpeg'], key="plus_btn")
+    
+    with c2:
+        # THE CHAT BOX
+        user_query = st.text_input("", placeholder="Message Matrix Yield...", label_visibility="collapsed")
+    
+    with c3:
+        # THE SEND (UP-ARROW) BUTTON
+        send_trigger = st.button("↑")
+
+    # --- PROCESSING ---
+    if send_trigger:
+        if uploaded_file:
+            img = Image.open(uploaded_file)
+            
+            with container:
+                st.markdown('<div class="result-area">', unsafe_allow_html=True)
+                st.image(img, width=500)
                 
                 try:
                     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     
-                    with st.spinner("Analyzing market structure..."):
-                        prompt = user_query if user_query else "Identify Trend, HH, HL, LH, LL, BOS, and provide Entry/SL/TP."
+                    with st.spinner("Analyzing structure..."):
+                        prompt = user_query if user_query else "Identify Trend, HH, HL, LH, LL, BOS, and Entry/SL/TP."
                         response = model.generate_content([prompt, img])
                         
-                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
-                        st.markdown("### 📊 Matrix AI Response")
+                        st.markdown("### 📊 Analysis Result")
                         st.write(response.text)
-                        st.markdown('</div>', unsafe_allow_html=True)
                 except:
-                    st.error("Error: Please check your API Key in Streamlit Secrets.")
-            else:
-                st.warning("Please upload a chart using the (+) button first.")
+                    st.error("Error: Check your API Key in Streamlit Secrets.")
+                st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.warning("Please tap the (+) button to upload your chart first.")
 
-    # Footer spacing
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    st.markdown("<br><br>", unsafe_allow_html=True)
