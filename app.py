@@ -4,7 +4,7 @@ import os
 import google.generativeai as genai
 from PIL import Image
 
-# --- 1. LOGO LOGIC (Keeps the Website Identity) ---
+# --- 1. CONFIG & LOGO ---
 if os.path.exists("logo.png.jpeg"):
     logo_path = "logo.png.jpeg"
 elif os.path.exists("logo.png"):
@@ -12,147 +12,128 @@ elif os.path.exists("logo.png"):
 else:
     logo_path = None
 
-# Set the Browser Tab Logo
-if logo_path:
-    try:
-        img_icon = Image.open(logo_path)
-        st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon=img_icon)
-    except:
-        st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon="📈")
-else:
-    st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon="📈")
+st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon=logo_path if logo_path else "📈")
 
-# --- 2. STYLING (Massive Title & Clean Box) ---
+# --- 2. THE CHAT-STYLE CSS ---
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #ffffff; }
     
+    /* Big Header */
     .big-title {
-        font-size: 95px !important;
-        font-weight: 900;
+        font-size: 50px !important;
+        font-weight: 800;
         text-align: center;
-        margin-bottom: 5px;
+        margin-top: -20px;
         color: #ffffff;
-        text-transform: uppercase;
-        letter-spacing: -3px;
     }
 
-    .sub-text {
-        text-align: center;
-        font-size: 22px;
-        color: #5d6d7e;
-        margin-bottom: 40px;
-    }
-
-    .login-box {
+    /* Modern Chat Input Container */
+    .chat-container {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 70%;
+        background-color: #21262d;
+        border-radius: 25px;
+        padding: 10px 20px;
         border: 1px solid #30363d;
-        padding: 35px;
-        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    /* Customizing the Streamlit Uploader to look like a (+) Button */
+    .stFileUploader section {
+        padding: 0 !important;
+        background-color: transparent !important;
+        border: none !important;
+    }
+    
+    /* Style for Analysis Results */
+    .result-card {
         background-color: #161b22;
-        box-shadow: 0px 15px 40px rgba(0,0,0,0.6);
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #30363d;
+        margin-top: 20px;
     }
 
-    .stButton>button {
-        width: 100%;
-        border-radius: 10px;
-        height: 3.8em;
-        background-color: #1f77b4;
-        color: white;
-        font-weight: bold;
-        border: none;
-    }
-
-    /* Fix spacing at the top */
-    .block-container { padding-top: 3rem !important; }
     header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. CORE FUNCTIONS ---
+# --- 3. CORE LOGIC ---
 def load_users():
-    file = 'users.csv'
-    if not os.path.exists(file):
-        df = pd.DataFrame(columns=['Email', 'Password', 'Username'])
-        df.to_csv(file, index=False)
-        return df
-    return pd.read_csv(file)
-
-def save_user(email, pw, user):
-    users = load_users()
-    if email in users['Email'].values: return False
-    new_data = pd.DataFrame([[email, pw, user]], columns=['Email', 'Password', 'Username'])
-    pd.concat([users, new_data], ignore_index=True).to_csv('users.csv', index=False)
-    return True
+    if not os.path.exists('users.csv'):
+        pd.DataFrame(columns=['Email', 'Password', 'Username']).to_csv('users.csv', index=False)
+    return pd.read_csv('users.csv')
 
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'signup_mode' not in st.session_state: st.session_state.signup_mode = False
 
-# --- 4. LOGIN / SIGNUP VIEW ---
+# --- 4. LOGIN SCREEN (SAME AS PREVIOUS) ---
 if not st.session_state.logged_in:
-    st.markdown('<h1 class="big-title">MATRIX YIELD</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-text">PRO CHART ANALYSIS AI</p>', unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1, 1.4, 1])
-    
+    st.markdown('<h1 style="font-size:90px; text-align:center;">MATRIX YIELD</h1>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
-        st.markdown('<div class="login-box">', unsafe_allow_html=True)
-        if not st.session_state.signup_mode:
+        with st.form("login"):
             e = st.text_input("Email")
             p = st.text_input("Password", type="password")
-            if st.button("SIGN IN"):
-                u_db = load_users()
-                match = u_db[(u_db['Email'] == e) & (u_db['Password'] == p)]
-                if not match.empty:
+            if st.form_submit_button("SIGN IN"):
+                db = load_users()
+                if not db[(db['Email'] == e) & (db['Password'] == p)].empty:
                     st.session_state.logged_in = True
-                    st.session_state.username = match['Username'].values[0]
+                    st.session_state.username = db[db['Email'] == e]['Username'].values[0]
                     st.rerun()
-                else: st.error("Invalid Credentials")
-            
-            st.write("---")
-            if st.button("CREATE ACCOUNT"):
-                st.session_state.signup_mode = True
-                st.rerun()
-        else:
-            un = st.text_input("Username")
-            em = st.text_input("Email")
-            pw = st.text_input("Password", type="password")
-            if st.button("REGISTER"):
-                if save_user(em, pw, un):
-                    st.success("Ready! Please Login.")
-                    st.session_state.signup_mode = False
-                    st.rerun()
-            if st.button("BACK"):
-                st.session_state.signup_mode = False
-                st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+                else: st.error("Invalid Login")
 
-# --- 5. DASHBOARD (MAIN LOGO LIVES HERE) ---
+# --- 5. THE NEW ANALYSIS HUB (CHAT INTERFACE) ---
 else:
     with st.sidebar:
-        # THE LOGO REMAINS HERE
-        if logo_path:
-            st.image(logo_path, use_container_width=True)
-        
-        st.title(f"Welcome, {st.session_state.username}")
-        if st.button("LOGOUT"):
+        if logo_path: st.image(logo_path, use_container_width=True)
+        st.write(f"Logged in as: **{st.session_state.username}**")
+        if st.button("Logout"):
             st.session_state.logged_in = False
             st.rerun()
 
-    st.markdown('<h1 class="big-title" style="font-size: 55px !important;">ANALYSIS HUB</h1>', unsafe_allow_html=True)
-    
-    chart = st.file_uploader("Upload Market Chart", type=['png', 'jpg', 'jpeg'])
+    st.markdown('<h1 class="big-title">ANALYSIS HUB</h1>', unsafe_allow_html=True)
 
-    if chart:
-        img = Image.open(chart)
-        st.image(img, use_container_width=True)
+    # UI for Chat & Upload
+    # We use columns to simulate the (+) [Text] [^] layout
+    display_col1, display_col2 = st.columns([2, 1])
+
+    with st.container():
+        st.write("### 👋 How can Matrix Yield help you today?")
         
-        if st.button("🚀 ANALYZE STRUCTURE"):
-            try:
-                genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt = "Analyze: Trend, HH, HL, LH, LL, BOS. Provide Entry, SL, TP."
-                res = model.generate_content([prompt, img])
-                st.markdown("### 📊 Results")
-                st.write(res.text)
-            except:
-                st.error("API Key missing in Streamlit Cloud!")
+        # 1. THE PLUS (+) BUTTON AREA
+        uploaded_file = st.file_uploader("➕ Upload Chart", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+        
+        # 2. THE TEXT INPUT AREA
+        user_query = st.text_input("Type your message or ask about a chart...", placeholder="Analyze this chart for BOS and entry...", label_visibility="collapsed")
+        
+        # 3. THE ANALYSIS BUTTON (The "Arrow Up" Trigger)
+        if st.button("⬆️ Run Analysis"):
+            if uploaded_file:
+                img = Image.open(uploaded_file)
+                st.image(img, width=400)
+                
+                try:
+                    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    
+                    with st.spinner("Analyzing market structure..."):
+                        prompt = user_query if user_query else "Identify Trend, HH, HL, LH, LL, BOS, and provide Entry/SL/TP."
+                        response = model.generate_content([prompt, img])
+                        
+                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                        st.markdown("### 📊 Matrix AI Response")
+                        st.write(response.text)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                except:
+                    st.error("Error: Please check your API Key in Streamlit Secrets.")
+            else:
+                st.warning("Please upload a chart using the (+) button first.")
+
+    # Footer spacing
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
