@@ -1,11 +1,18 @@
 import streamlit as st
-import pandas as pd
-import os
-import google.generativeai as genai
 from PIL import Image
+import os
 
-# --- 1. PAGE CONFIG & STYLING ---
-st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon="📈")
+# 1. Setup Logo and Page Config
+logo_path = "logo.png"
+
+if os.path.exists(logo_path):
+    img = Image.open(logo_path)
+    st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon=img)
+    # This displays the logo at the top of your sidebar
+    st.sidebar.image(img, width=150) 
+else:
+    # Fallback if the logo isn't uploaded yet
+    st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon="📈")
 
 # Custom CSS for a professional Dark Theme
 st.markdown("""
