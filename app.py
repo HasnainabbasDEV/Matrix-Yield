@@ -4,60 +4,71 @@ import os
 import google.generativeai as genai
 from PIL import Image
 
-# --- 1. PAGE CONFIG ---
-st.set_page_config(page_title="Matrix Yield", layout="wide")
+# --- 1. LOGO LOGIC (Keeps the Website Identity) ---
+if os.path.exists("logo.png.jpeg"):
+    logo_path = "logo.png.jpeg"
+elif os.path.exists("logo.png"):
+    logo_path = "logo.png"
+else:
+    logo_path = None
 
-# --- 2. THE STYLING (Big Title + Reinstated Login Box) ---
+# Set the Browser Tab Logo
+if logo_path:
+    try:
+        img_icon = Image.open(logo_path)
+        st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon=img_icon)
+    except:
+        st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon="📈")
+else:
+    st.set_page_config(page_title="Matrix Yield", layout="wide", page_icon="📈")
+
+# --- 2. STYLING (Massive Title & Clean Box) ---
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #ffffff; }
     
-    /* Massive Centered Title */
     .big-title {
-        font-size: 90px !important;
-        font-weight: 800;
+        font-size: 95px !important;
+        font-weight: 900;
         text-align: center;
-        margin-bottom: 0px;
+        margin-bottom: 5px;
         color: #ffffff;
         text-transform: uppercase;
+        letter-spacing: -3px;
     }
 
     .sub-text {
         text-align: center;
-        font-size: 20px;
-        color: #8899A6;
+        font-size: 22px;
+        color: #5d6d7e;
         margin-bottom: 40px;
     }
 
-    /* The Login Box - Back and Clean */
     .login-box {
         border: 1px solid #30363d;
-        padding: 30px;
-        border-radius: 15px;
+        padding: 35px;
+        border-radius: 20px;
         background-color: #161b22;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.5);
+        box-shadow: 0px 15px 40px rgba(0,0,0,0.6);
     }
 
     .stButton>button {
         width: 100%;
-        border-radius: 8px;
-        height: 3.5em;
+        border-radius: 10px;
+        height: 3.8em;
         background-color: #1f77b4;
         color: white;
         font-weight: bold;
         border: none;
     }
 
-    /* Removes the top empty space/padding from the page */
-    .block-container {
-        padding-top: 2rem !important;
-    }
-    
+    /* Fix spacing at the top */
+    .block-container { padding-top: 3rem !important; }
     header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. DATABASE FUNCTIONS ---
+# --- 3. CORE FUNCTIONS ---
 def load_users():
     file = 'users.csv'
     if not os.path.exists(file):
@@ -68,87 +79,80 @@ def load_users():
 
 def save_user(email, pw, user):
     users = load_users()
-    if email in users['Email'].values:
-        return False
+    if email in users['Email'].values: return False
     new_data = pd.DataFrame([[email, pw, user]], columns=['Email', 'Password', 'Username'])
     pd.concat([users, new_data], ignore_index=True).to_csv('users.csv', index=False)
     return True
 
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'signup_mode' not in st.session_state:
-    st.session_state.signup_mode = False
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if 'signup_mode' not in st.session_state: st.session_state.signup_mode = False
 
-# --- 4. THE INTERFACE ---
+# --- 4. LOGIN / SIGNUP VIEW ---
 if not st.session_state.logged_in:
-    
-    # MASSIVE TITLE & SUBTITLE
     st.markdown('<h1 class="big-title">MATRIX YIELD</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-text">Advanced Market Structure Analysis</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-text">PRO CHART ANALYSIS AI</p>', unsafe_allow_html=True)
 
-    # Use columns to center the box properly
-    left, mid, right = st.columns([1, 1.5, 1])
+    col1, col2, col3 = st.columns([1, 1.4, 1])
     
-    with mid:
+    with col2:
         st.markdown('<div class="login-box">', unsafe_allow_html=True)
-        
         if not st.session_state.signup_mode:
-            email = st.text_input("Email Address")
-            password = st.text_input("Password", type="password")
-            
+            e = st.text_input("Email")
+            p = st.text_input("Password", type="password")
             if st.button("SIGN IN"):
-                users = load_users()
-                match = users[(users['Email'] == email) & (users['Password'] == password)]
-                if match.empty:
-                    st.error("Invalid Login")
-                else:
+                u_db = load_users()
+                match = u_db[(u_db['Email'] == e) & (u_db['Password'] == p)]
+                if not match.empty:
                     st.session_state.logged_in = True
                     st.session_state.username = match['Username'].values[0]
                     st.rerun()
+                else: st.error("Invalid Credentials")
             
             st.write("---")
-            if st.button("CREATE NEW ACCOUNT"):
+            if st.button("CREATE ACCOUNT"):
                 st.session_state.signup_mode = True
                 st.rerun()
         else:
-            # SIGNUP SECTION
-            u = st.text_input("User Name")
-            e = st.text_input("Email")
-            p = st.text_input("Create Password", type="password")
-            if st.button("COMPLETE REGISTRATION"):
-                if save_user(e, p, u):
-                    st.success("Account Created!")
+            un = st.text_input("Username")
+            em = st.text_input("Email")
+            pw = st.text_input("Password", type="password")
+            if st.button("REGISTER"):
+                if save_user(em, pw, un):
+                    st.success("Ready! Please Login.")
                     st.session_state.signup_mode = False
                     st.rerun()
-                else:
-                    st.error("User already exists")
-            if st.button("BACK TO LOGIN"):
+            if st.button("BACK"):
                 st.session_state.signup_mode = False
                 st.rerun()
-        
         st.markdown('</div>', unsafe_allow_html=True)
 
+# --- 5. DASHBOARD (MAIN LOGO LIVES HERE) ---
 else:
-    # MAIN DASHBOARD
-    st.sidebar.title(f"User: {st.session_state.username}")
-    if st.sidebar.button("LOGOUT"):
-        st.session_state.logged_in = False
-        st.rerun()
+    with st.sidebar:
+        # THE LOGO REMAINS HERE
+        if logo_path:
+            st.image(logo_path, use_container_width=True)
+        
+        st.title(f"Welcome, {st.session_state.username}")
+        if st.button("LOGOUT"):
+            st.session_state.logged_in = False
+            st.rerun()
 
-    st.markdown('<h1 class="big-title" style="font-size: 50px !important;">ANALYSIS HUB</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="big-title" style="font-size: 55px !important;">ANALYSIS HUB</h1>', unsafe_allow_html=True)
     
-    file = st.file_uploader("Upload Chart Screenshot", type=['png', 'jpg', 'jpeg'])
+    chart = st.file_uploader("Upload Market Chart", type=['png', 'jpg', 'jpeg'])
 
-    if file:
-        img = Image.open(file)
+    if chart:
+        img = Image.open(chart)
         st.image(img, use_container_width=True)
         
-        if st.button("RUN AI ANALYSIS"):
+        if st.button("🚀 ANALYZE STRUCTURE"):
             try:
                 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
                 model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt = "Analyze this chart. Identify: Trend, HH, HL, LH, LL. Mark BOS. Give Trade Idea: Entry, SL, TP."
-                response = model.generate_content([prompt, img])
-                st.write(response.text)
+                prompt = "Analyze: Trend, HH, HL, LH, LL, BOS. Provide Entry, SL, TP."
+                res = model.generate_content([prompt, img])
+                st.markdown("### 📊 Results")
+                st.write(res.text)
             except:
-                st.error("Check your API Key in Streamlit Cloud Settings!")
+                st.error("API Key missing in Streamlit Cloud!")
